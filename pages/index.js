@@ -58,7 +58,7 @@ export default function Home() {
   const [adminView, setAdminView] = useState('overview') // overview, users, loans, transactions
   const [allTransactions, setAllTransactions] = useState([])
 
-  const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://neobank-backend-7jga.onrender.com'
+  const API_URL = 'https://neobank-backend-7jga.onrender.com'
 
   useEffect(() => {
     const savedToken = localStorage.getItem('token')
