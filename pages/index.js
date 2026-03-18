@@ -58,7 +58,7 @@ export default function Home() {
   const [adminView, setAdminView] = useState('overview') // overview, users, loans, transactions
   const [allTransactions, setAllTransactions] = useState([])
 
-  const API_URL = 'http://localhost:3000/api/v1'
+  const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api/v1'
 
   useEffect(() => {
     const savedToken = localStorage.getItem('token')
