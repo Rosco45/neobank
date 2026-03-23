@@ -1037,15 +1037,6 @@ if (data.user.role === 'admin' || data.user.role === 'super_admin') {
                 background: '#f3f4f6',
                 borderRadius: '10px',
               }}>
-                <p style={{ fontSize: '0.875rem', fontWeight: '600', marginBottom: '0.5rem' }}>
-                  👤 Compte de test :
-                </p>
-                <p style={{ fontSize: '0.875rem', color: '#666', margin: '0.25rem 0' }}>
-                  Email : jean.dupont@email.com
-                </p>
-                <p style={{ fontSize: '0.875rem', color: '#666', margin: '0.25rem 0' }}>
-                  Mot de passe : Demo123!
-                </p>
               </div>
             )}
           </div>
