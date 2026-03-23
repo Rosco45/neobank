@@ -58,6 +58,13 @@ export default function Home() {
   const [adminView, setAdminView] = useState('overview') // overview, users, loans, transactions
   const [allTransactions, setAllTransactions] = useState([])
 
+  // Recharge carte
+  const [showRechargeModal, setShowRechargeModal] = useState(false)
+  const [selectedCardForRecharge, setSelectedCardForRecharge] = useState(null)
+  const [platformRib, setPlatformRib] = useState('')
+  const [showEditRibModal, setShowEditRibModal] = useState(false)
+  const [newRib, setNewRib] = useState('')
+
   const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api/v1'
 
   useEffect(() => {
@@ -78,6 +85,7 @@ export default function Home() {
       fetchCryptoWallets(savedToken)
       fetchCryptoPrices()
       fetchCryptoTransactions(savedToken)
+      fetchPlatformRib(savedToken)
 
       // Si admin, charger les données admin
       if (parsedUser.role === 'admin' || parsedUser.role === 'super_admin') {
@@ -127,15 +135,17 @@ export default function Home() {
       fetchCards(data.token)
       fetchLoans(data.token)
       // Lignes ~75, ~115, ~145
-fetchCryptoWallets(data.token)
-fetchCryptoPrices()
-fetchCryptoTransactions(data.token)
+      fetchCryptoWallets(data.token)
+      fetchCryptoPrices()
+      fetchCryptoTransactions(data.token)
+      fetchPlatformRib(data.token)
 
 // Si admin, charger toutes les données admin
 if (data.user.role === 'admin' || data.user.role === 'super_admin') {
     fetchPendingLoans(data.token)
     fetchAllUsers(data.token)
     fetchAllTransactions(data.token)
+    fetchPlatformRib(data.token)
   }
 
     } catch (err) {
@@ -765,6 +775,61 @@ if (data.user.role === 'admin' || data.user.role === 'super_admin') {
       fetchPendingLoans(token)
       fetchAllUsers(token)
       fetchAllTransactions(token)
+    }
+  }
+
+  // Récupérer le RIB de la plateforme
+  const fetchPlatformRib = async (authToken) => {
+    try {
+      const response = await fetch(`${API_URL}/platform/recharge-rib`, {
+        headers: { 'Authorization': `Bearer ${authToken}` }
+      })
+      const data = await response.json()
+      if (response.ok) {
+        setPlatformRib(data.data.rib)
+      }
+    } catch (err) {
+      console.error('Erreur récupération RIB:', err)
+    }
+  }
+
+  // Copier le RIB dans le presse-papier
+  const handleCopyRib = () => {
+    navigator.clipboard.writeText(platformRib)
+    alert('✅ RIB copié dans le presse-papier !')
+  }
+
+  // Mettre à jour le RIB (admin seulement)
+  const handleUpdateRib = async (e) => {
+    e.preventDefault()
+    setLoading(true)
+    setError('')
+
+    try {
+      const response = await fetch(`${API_URL}/admin/platform/recharge-rib`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ rib: newRib })
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Erreur mise à jour RIB')
+      }
+
+      alert(`✅ ${data.message}`)
+      setShowEditRibModal(false)
+      setNewRib('')
+      fetchPlatformRib(token)
+
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -1436,20 +1501,36 @@ if (data.user.role === 'admin' || data.user.role === 'super_admin') {
           <>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
               <h2 style={{ fontSize: '2rem', fontWeight: 'bold', margin: 0 }}>Mes Cartes</h2>
-              <button
-                onClick={() => setShowCreateCard(true)}
-                style={{
-                  background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                  color: 'white',
-                  border: 'none',
-                  padding: '1rem 2rem',
-                  borderRadius: '10px',
-                  cursor: 'pointer',
-                  fontWeight: '600',
-                }}
-              >
-                + Nouvelle Carte
-              </button>
+              <div style={{ display: 'flex', gap: '1rem' }}>
+                <button
+                  onClick={() => setShowRechargeModal(true)}
+                  style={{
+                    background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                    color: 'white',
+                    border: 'none',
+                    padding: '1rem 2rem',
+                    borderRadius: '10px',
+                    cursor: 'pointer',
+                    fontWeight: '600',
+                  }}
+                >
+                  💰 Créditer votre carte
+                </button>
+                <button
+                  onClick={() => setShowCreateCard(true)}
+                  style={{
+                    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                    color: 'white',
+                    border: 'none',
+                    padding: '1rem 2rem',
+                    borderRadius: '10px',
+                    cursor: 'pointer',
+                    fontWeight: '600',
+                  }}
+                >
+                  + Nouvelle Carte
+                </button>
+              </div>
             </div>
 
             {/* Modal Création Carte */}
@@ -1558,6 +1639,134 @@ if (data.user.role === 'admin' || data.user.role === 'super_admin') {
                       </button>
                     </div>
                   </form>
+                </div>
+              </div>
+            )}
+
+            {/* Modal Recharge Carte */}
+            {showRechargeModal && (
+              <div style={{
+                position: 'fixed',
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                background: 'rgba(0,0,0,0.5)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                zIndex: 1000,
+              }}>
+                <div style={{
+                  background: 'white',
+                  borderRadius: '20px',
+                  padding: '2rem',
+                  maxWidth: '600px',
+                  width: '90%',
+                }}>
+                  <h3 style={{ fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '1.5rem' }}>
+                    💰 Créditer votre carte
+                  </h3>
+
+                  {/* Sélection de la carte */}
+                  <div style={{ marginBottom: '1.5rem' }}>
+                    <label style={{ display: 'block', fontWeight: '600', marginBottom: '0.5rem' }}>
+                      Sélectionnez la carte à créditer
+                    </label>
+                    <select
+                      value={selectedCardForRecharge?.id || ''}
+                      onChange={(e) => {
+                        const card = cards.find(c => c.id === parseInt(e.target.value))
+                        setSelectedCardForRecharge(card)
+                      }}
+                      style={styles.input}
+                    >
+                      <option value="">-- Choisir une carte --</option>
+                      {cards.map((card) => (
+                        <option key={card.id} value={card.id}>
+                          {card.cardType.toUpperCase()} - •••• {card.cardNumberLast4}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {selectedCardForRecharge && (
+                    <>
+                      {/* Affichage du RIB */}
+                      <div style={{
+                        background: '#f3f4f6',
+                        borderRadius: '10px',
+                        padding: '1.5rem',
+                        marginBottom: '1.5rem',
+                      }}>
+                        <p style={{ fontSize: '0.875rem', fontWeight: 'bold', marginBottom: '0.5rem', color: '#666' }}>
+                          RIB de rechargement
+                        </p>
+                        <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                          <input
+                            type="text"
+                            value={platformRib}
+                            readOnly
+                            style={{
+                              flex: 1,
+                              padding: '0.75rem',
+                              border: '2px solid #e5e7eb',
+                              borderRadius: '10px',
+                              fontSize: '1rem',
+                              background: 'white',
+                              fontFamily: 'monospace',
+                            }}
+                          />
+                          <button
+                            onClick={handleCopyRib}
+                            style={{
+                              padding: '0.75rem 1.5rem',
+                              background: '#667eea',
+                              color: 'white',
+                              border: 'none',
+                              borderRadius: '10px',
+                              fontWeight: '600',
+                              cursor: 'pointer',
+                            }}
+                          >
+                            📋 Copier
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Instructions */}
+                      <div style={{
+                        background: '#eff6ff',
+                        border: '1px solid #bfdbfe',
+                        borderRadius: '10px',
+                        padding: '1rem',
+                        marginBottom: '1.5rem',
+                      }}>
+                        <p style={{ color: '#1e40af', margin: 0, fontSize: '0.875rem' }}>
+                          ℹ️ <strong>Instructions :</strong> Veuillez vous rendre sur votre site de paiement préféré pour recharger votre carte <strong>{selectedCardForRecharge.cardType.toUpperCase()} •••• {selectedCardForRecharge.cardNumberLast4}</strong> en faisant un dépôt sur le RIB affiché ci-dessus.
+                        </p>
+                      </div>
+                    </>
+                  )}
+
+                  <button
+                    onClick={() => {
+                      setShowRechargeModal(false)
+                      setSelectedCardForRecharge(null)
+                    }}
+                    style={{
+                      width: '100%',
+                      padding: '1rem',
+                      background: '#e5e7eb',
+                      color: '#333',
+                      border: 'none',
+                      borderRadius: '10px',
+                      fontWeight: '600',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    Fermer
+                  </button>
                 </div>
               </div>
             )}
@@ -2605,6 +2814,23 @@ if (data.user.role === 'admin' || data.user.role === 'super_admin') {
                     >
                       🏦 Valider les prêts ({pendingLoans.length}) →
                     </button>
+                    <button
+                      onClick={() => {
+                        setNewRib(platformRib)
+                        setShowEditRibModal(true)
+                      }}
+                      style={{
+                        padding: '1rem',
+                        background: '#f3f4f6',
+                        border: 'none',
+                        borderRadius: '10px',
+                        textAlign: 'left',
+                        cursor: 'pointer',
+                        fontWeight: '600',
+                      }}
+                    >
+                      🏦 Modifier le RIB de rechargement →
+                    </button>
                   </div>
                 </div>
               </>
@@ -3263,6 +3489,115 @@ if (data.user.role === 'admin' || data.user.role === 'super_admin') {
                     </table>
                   </div>
                 )}
+              </div>
+            )}
+            {/* Modal Modification RIB (Admin) */}
+            {showEditRibModal && (
+              <div style={{
+                position: 'fixed',
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                background: 'rgba(0,0,0,0.5)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                zIndex: 1000,
+              }}>
+                <div style={{
+                  background: 'white',
+                  borderRadius: '20px',
+                  padding: '2rem',
+                  maxWidth: '600px',
+                  width: '90%',
+                }}>
+                  <h3 style={{ fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '1.5rem' }}>
+                    🏦 Modifier le RIB de Rechargement
+                  </h3>
+
+                  {error && (
+                    <div style={{
+                      padding: '1rem',
+                      background: '#fee',
+                      border: '1px solid #fcc',
+                      borderRadius: '10px',
+                      color: '#c33',
+                      marginBottom: '1rem',
+                    }}>
+                      ❌ {error}
+                    </div>
+                  )}
+
+                  <form onSubmit={handleUpdateRib}>
+                    <div style={{ marginBottom: '1.5rem' }}>
+                      <label style={{ display: 'block', fontWeight: '600', marginBottom: '0.5rem' }}>
+                        Nouveau RIB / IBAN
+                      </label>
+                      <input
+                        type="text"
+                        value={newRib}
+                        onChange={(e) => setNewRib(e.target.value)}
+                        placeholder="FR76 1234 5678 9012 3456 7890 123"
+                        style={styles.input}
+                        required
+                      />
+                      <p style={{ fontSize: '0.75rem', color: '#999', marginTop: '-0.75rem' }}>
+                        Format : IBAN français (27 caractères) avec ou sans espaces
+                      </p>
+                    </div>
+
+                    <div style={{
+                      background: '#fef3c7',
+                      border: '1px solid #fde68a',
+                      borderRadius: '10px',
+                      padding: '1rem',
+                      marginBottom: '1.5rem',
+                    }}>
+                      <p style={{ color: '#92400e', margin: 0, fontSize: '0.875rem' }}>
+                        ⚠️ <strong>Attention :</strong> Ce RIB sera affiché à tous les utilisateurs pour recharger leurs cartes. Assurez-vous qu'il est correct.
+                      </p>
+                    </div>
+
+                    <div style={{ display: 'flex', gap: '1rem' }}>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowEditRibModal(false)
+                          setError('')
+                        }}
+                        style={{
+                          flex: 1,
+                          padding: '1rem',
+                          background: '#e5e7eb',
+                          color: '#333',
+                          border: 'none',
+                          borderRadius: '10px',
+                          fontWeight: '600',
+                          cursor: 'pointer',
+                        }}
+                      >
+                        Annuler
+                      </button>
+                      <button
+                        type="submit"
+                        style={{
+                          flex: 1,
+                          padding: '1rem',
+                          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                          color: 'white',
+                          border: 'none',
+                          borderRadius: '10px',
+                          fontWeight: '600',
+                          cursor: 'pointer',
+                        }}
+                        disabled={loading}
+                      >
+                        {loading ? 'Enregistrement...' : 'Enregistrer'}
+                      </button>
+                    </div>
+                  </form>
+                </div>
               </div>
             )}
           </>
