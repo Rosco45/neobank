@@ -1469,9 +1469,7 @@ if (data.user.role === 'admin' || data.user.role === 'super_admin') {
                   {loading ? 'Envoi...' : 'Confirmer le transfert'}
                 </button>
               </div>
-            </form>
-          </div>
-          <div style={{ marginBottom: '1.5rem' }}>
+              <div style={{ marginBottom: '1.5rem' }}>
                     <label style={{ display: 'block', fontWeight: '600', marginBottom: '0.5rem' }}>
                       Carte à utiliser
                     </label>
@@ -1488,6 +1486,8 @@ if (data.user.role === 'admin' || data.user.role === 'super_admin') {
                       ))}
                     </select>
                   </div>
+            </form>
+          </div>
         </div>
       )}
 
