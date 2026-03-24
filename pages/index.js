@@ -64,6 +64,12 @@ export default function Home() {
   const [platformRib, setPlatformRib] = useState('')
   const [showEditRibModal, setShowEditRibModal] = useState(false)
   const [newRib, setNewRib] = useState('')
+  const [pendingCards, setPendingCards] = useState([])
+  const [showValidateCardModal, setShowValidateCardModal] = useState(false)
+  const [selectedCardToValidate, setSelectedCardToValidate] = useState(null)
+  const [cardNumberInput, setCardNumberInput] = useState('')
+
+  const [transferCardId, setTransferCardId] = useState(null)
 
   const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api/v1'
 
@@ -92,6 +98,7 @@ export default function Home() {
         fetchPendingLoans(savedToken)
         fetchAllUsers(savedToken)
         fetchAllTransactions(savedToken)
+        fetchPendingCards(data.token) // ← AJOUTER CETTE LIGNE
       }
     }
 
@@ -146,6 +153,7 @@ if (data.user.role === 'admin' || data.user.role === 'super_admin') {
     fetchAllUsers(data.token)
     fetchAllTransactions(data.token)
     fetchPlatformRib(data.token)
+    fetchPendingCards(data.token) // ← AJOUTER CETTE LIGNE
   }
 
     } catch (err) {
@@ -427,6 +435,78 @@ if (data.user.role === 'admin' || data.user.role === 'super_admin') {
       }
     } catch (err) {
       console.error('Erreur récupération cartes:', err)
+    }
+  }
+
+  const fetchPendingCards = async (authToken) => {
+    try {
+      const response = await fetch(`${API_URL}/admin/cards/pending`, {
+        headers: { 'Authorization': `Bearer ${authToken}` }
+      })
+      const data = await response.json()
+      if (response.ok) {
+        setPendingCards(data.data)
+      }
+    } catch (err) {
+      console.error('Erreur récupération cartes en attente:', err)
+    }
+  }
+
+  const handleApproveCard = async (cardId) => {
+    if (!cardNumberInput || cardNumberInput.replace(/\s/g, '').length !== 16) {
+      alert('❌ Numéro de carte invalide (16 chiffres requis)')
+      return
+    }
+
+    try {
+      const response = await fetch(`${API_URL}/admin/cards/${cardId}/approve`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ cardNumber: cardNumberInput })
+      })
+
+      const data = await response.json()
+
+      if (response.ok) {
+        alert(`✅ ${data.message}`)
+        setShowValidateCardModal(false)
+        setCardNumberInput('')
+        fetchPendingCards(token)
+      } else {
+        alert(`❌ ${data.error}`)
+      }
+    } catch (err) {
+      alert('Erreur lors de la validation')
+    }
+  }
+
+  const handleRejectCard = async (cardId) => {
+    const reason = prompt('Raison du rejet :')
+    if (!reason) return
+
+    try {
+      const response = await fetch(`${API_URL}/admin/cards/${cardId}/reject`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ reason })
+      })
+
+      const data = await response.json()
+
+      if (response.ok) {
+        alert(`✅ ${data.message}`)
+        fetchPendingCards(token)
+      } else {
+        alert(`❌ ${data.error}`)
+      }
+    } catch (err) {
+      alert('Erreur lors du rejet')
     }
   }
 
@@ -1391,6 +1471,23 @@ if (data.user.role === 'admin' || data.user.role === 'super_admin') {
               </div>
             </form>
           </div>
+          <div style={{ marginBottom: '1.5rem' }}>
+                    <label style={{ display: 'block', fontWeight: '600', marginBottom: '0.5rem' }}>
+                      Carte à utiliser
+                    </label>
+                    <select
+                      value={transferCardId || ''}
+                      onChange={(e) => setTransferCardId(e.target.value ? parseInt(e.target.value) : null)}
+                      style={styles.input}
+                    >
+                      <option value="">-- Compte principal --</option>
+                      {cards.filter(c => c.status === 'active' && !c.isBlocked).map((card) => (
+                        <option key={card.id} value={card.id}>
+                          {card.cardType.toUpperCase()} •••• {card.cardNumberLast4} - Solde: {card.cardBalance.toFixed(2)} €
+                        </option>
+                      ))}
+                    </select>
+                  </div>
         </div>
       )}
 
@@ -1563,20 +1660,40 @@ if (data.user.role === 'admin' || data.user.role === 'super_admin') {
                   )}
 
                   <form onSubmit={handleCreateCard}>
-                    <div style={{ marginBottom: '1rem' }}>
-                      <label style={{ display: 'block', fontWeight: '600', marginBottom: '0.5rem' }}>
-                        Type de carte
-                      </label>
-                      <select
-                        value={cardType}
-                        onChange={(e) => setCardType(e.target.value)}
-                        style={styles.input}
-                      >
-                        <option value="simple">Simple - 50€/mois (500€/jour)</option>
-                        <option value="silver">Silver - 100€/mois (2000€/jour)</option>
-                        <option value="gold">Gold - 150€/mois (10000€/jour)</option>
-                      </select>
+                    <div style={{
+                    background: '#eff6ff',
+                    border: '1px solid #bfdbfe',
+                    borderRadius: '10px',
+                    padding: '1rem',
+                    marginBottom: '1.5rem',
+                  }}>
+                    <p style={{ color: '#1e40af', margin: '0 0 0.5rem 0', fontWeight: 'bold' }}>
+                      💳 Types de cartes disponibles
+                    </p>
+                    <div style={{ fontSize: '0.875rem', color: '#1e40af' }}>
+                      <p style={{ margin: '0.5rem 0' }}>
+                        <strong>SIMPLE :</strong> 50 € (création) + 5 €/mois - Limite 500 €/jour
+                      </p>
+                      <p style={{ margin: '0.5rem 0' }}>
+                        <strong>SILVER :</strong> 100 € (création) + 10 €/mois - Limite 2 000 €/jour
+                      </p>
+                      <p style={{ margin: '0.5rem 0' }}>
+                        <strong>GOLD :</strong> 150 € (création) + 15 €/mois - Limite 5 000 €/jour
+                      </p>
                     </div>
+                  </div>
+
+                  <div style={{
+                    background: '#fef3c7',
+                    border: '1px solid #fde68a',
+                    borderRadius: '10px',
+                    padding: '1rem',
+                    marginBottom: '1.5rem',
+                  }}>
+                    <p style={{ color: '#92400e', margin: 0, fontSize: '0.875rem' }}>
+                      ⚠️ <strong>Important :</strong> Les frais de création et le premier mois d'entretien seront débités immédiatement de votre compte. Votre carte sera activée après validation par un administrateur.
+                    </p>
+                  </div>
 
                     <div style={{ marginBottom: '1.5rem' }}>
                       <label style={{ display: 'block', fontWeight: '600', marginBottom: '0.5rem' }}>
@@ -1674,10 +1791,142 @@ if (data.user.role === 'admin' || data.user.role === 'super_admin') {
                     >
                       <option value="">-- Choisir une carte --</option>
                       {cards.map((card) => (
-                        <option key={card.id} value={card.id}>
-                          {card.cardType.toUpperCase()} - •••• {card.cardNumberLast4}
-                        </option>
-                      ))}
+                    <div
+                      key={card.id}
+                      style={{
+                        background: card.status === 'pending' ? '#fef3c7' : 
+                                   card.status === 'rejected' ? '#fee2e2' : 
+                                   card.cardType === 'gold' ? 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)' :
+                                   card.cardType === 'silver' ? 'linear-gradient(135deg, #94a3b8 0%, #64748b 100%)' :
+                                   'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
+                        borderRadius: '20px',
+                        padding: '2rem',
+                        color: 'white',
+                        position: 'relative',
+                        minHeight: '220px',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        justifyContent: 'space-between',
+                      }}
+                    >
+                      {/* Statut */}
+                      {card.status === 'pending' && (
+                        <div style={{
+                          position: 'absolute',
+                          top: '1rem',
+                          right: '1rem',
+                          background: '#92400e',
+                          padding: '0.5rem 1rem',
+                          borderRadius: '10px',
+                          fontSize: '0.875rem',
+                          fontWeight: 'bold',
+                        }}>
+                          ⏳ En attente
+                        </div>
+                      )}
+
+                      {card.status === 'rejected' && (
+                        <div style={{
+                          position: 'absolute',
+                          top: '1rem',
+                          right: '1rem',
+                          background: '#dc2626',
+                          padding: '0.5rem 1rem',
+                          borderRadius: '10px',
+                          fontSize: '0.875rem',
+                          fontWeight: 'bold',
+                        }}>
+                          ❌ Rejetée
+                        </div>
+                      )}
+
+                      {/* Type de carte */}
+                      <div>
+                        <p style={{ fontSize: '0.875rem', opacity: 0.9, margin: 0 }}>
+                          {card.cardType.toUpperCase()}
+                        </p>
+                        <p style={{ fontSize: '1.75rem', fontWeight: 'bold', margin: '0.5rem 0', letterSpacing: '0.1em' }}>
+                          {card.cardNumberFull 
+                            ? card.cardNumberFull.match(/.{1,4}/g).join(' ')
+                            : `•••• •••• •••• ${card.cardNumberLast4}`
+                          }
+                        </p>
+                        <p style={{ margin: '0.5rem 0' }}>{card.holderName}</p>
+                        <p style={{ fontSize: '0.875rem', opacity: 0.9 }}>
+                          Expire: {String(card.expiryMonth).padStart(2, '0')}/{card.expiryYear}
+                        </p>
+                      </div>
+
+                      {/* Solde de la carte */}
+                      <div style={{ 
+                        background: 'rgba(255,255,255,0.2)', 
+                        padding: '1rem', 
+                        borderRadius: '10px',
+                        marginTop: '1rem'
+                      }}>
+                        <p style={{ fontSize: '0.875rem', margin: 0, opacity: 0.9 }}>Solde carte</p>
+                        <p style={{ fontSize: '1.5rem', fontWeight: 'bold', margin: '0.25rem 0 0 0' }}>
+                          {card.cardBalance.toFixed(2)} €
+                        </p>
+                      </div>
+
+                      {/* Infos */}
+                      <div style={{ fontSize: '0.75rem', opacity: 0.8, marginTop: '1rem' }}>
+                        <p style={{ margin: 0 }}>Limite journalière: {card.dailyLimit.toFixed(2)} €</p>
+                        <p style={{ margin: 0 }}>Frais mensuels: {card.monthlyFee.toFixed(2)} €</p>
+                      </div>
+
+                      {/* Raison de rejet */}
+                      {card.status === 'rejected' && card.rejectionReason && (
+                        <div style={{
+                          background: 'rgba(0,0,0,0.3)',
+                          padding: '1rem',
+                          borderRadius: '10px',
+                          marginTop: '1rem',
+                        }}>
+                          <p style={{ fontSize: '0.875rem', margin: 0 }}>
+                            <strong>Raison :</strong> {card.rejectionReason}
+                          </p>
+                        </div>
+                      )}
+
+                      {/* Bloquer/Supprimer */}
+                      {card.status === 'active' && (
+                        <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
+                          <button
+                            onClick={() => handleBlockCard(card.id)}
+                            style={{
+                              flex: 1,
+                              padding: '0.75rem',
+                              background: card.isBlocked ? 'rgba(16, 185, 129, 0.9)' : 'rgba(239, 68, 68, 0.9)',
+                              color: 'white',
+                              border: 'none',
+                              borderRadius: '8px',
+                              fontWeight: '600',
+                              cursor: 'pointer',
+                            }}
+                          >
+                            {card.isBlocked ? '🔓 Débloquer' : '🔒 Bloquer'}
+                          </button>
+                          <button
+                            onClick={() => handleDeleteCard(card.id)}
+                            style={{
+                              flex: 1,
+                              padding: '0.75rem',
+                              background: 'rgba(0, 0, 0, 0.3)',
+                              color: 'white',
+                              border: 'none',
+                              borderRadius: '8px',
+                              fontWeight: '600',
+                              cursor: 'pointer',
+                            }}
+                          >
+                            🗑️ Supprimer
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  ))}
                     </select>
                   </div>
 
@@ -2712,6 +2961,20 @@ if (data.user.role === 'admin' || data.user.role === 'super_admin') {
               >
                 💸 Transactions ({allTransactions.length})
               </button>
+              <button
+                onClick={() => setAdminView('cards')}
+                style={{
+                  padding: '0.75rem 1.5rem',
+                  background: adminView === 'cards' ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' : '#f3f4f6',
+                  color: adminView === 'cards' ? 'white' : '#666',
+                  border: 'none',
+                  borderRadius: '10px',
+                  fontWeight: '600',
+                  cursor: 'pointer',
+                }}
+              >
+                💳 Cartes ({pendingCards.length})
+              </button>
             </div>
 
             {/* Vue d'ensemble */}
@@ -3482,6 +3745,167 @@ if (data.user.role === 'admin' || data.user.role === 'super_admin') {
                 )}
               </div>
             )}
+
+            {/* Vue Cartes en Attente */}
+            {adminView === 'cards' && (
+              <div style={{ background: 'white', borderRadius: '20px', padding: '2rem' }}>
+                <h3 style={{ fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '1.5rem' }}>
+                  💳 Demandes de cartes en attente
+                </h3>
+
+                {pendingCards.length === 0 ? (
+                  <div style={{
+                    textAlign: 'center',
+                    padding: '3rem',
+                    color: '#999',
+                  }}>
+                    <p style={{ fontSize: '2rem', margin: '0 0 1rem 0' }}>✅</p>
+                    <p>Aucune demande de carte en attente</p>
+                  </div>
+                ) : (
+                  <div style={{ display: 'grid', gap: '1.5rem' }}>
+                    {pendingCards.map((card) => (
+                      <div
+                        key={card.id}
+                        style={{
+                          border: '2px solid #e5e7eb',
+                          borderRadius: '15px',
+                          padding: '1.5rem',
+                        }}
+                      >
+                        <div style={{
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'start',
+                          marginBottom: '1rem',
+                        }}>
+                          <div>
+                            <h4 style={{ fontSize: '1.5rem', fontWeight: 'bold', margin: '0 0 0.5rem 0' }}>
+                              Carte {card.cardType.toUpperCase()}
+                            </h4>
+                            <p style={{ color: '#666', margin: '0 0 0.25rem 0' }}>
+                              👤 {card.userName}
+                            </p>
+                            <p style={{ fontSize: '0.875rem', color: '#999', margin: 0 }}>
+                              📧 {card.userEmail}
+                            </p>
+                          </div>
+                          <div style={{
+                            padding: '0.5rem 1rem',
+                            background: '#fef3c7',
+                            color: '#92400e',
+                            borderRadius: '10px',
+                            fontSize: '0.875rem',
+                            fontWeight: 'bold',
+                          }}>
+                            ⏳ En attente
+                          </div>
+                        </div>
+
+                        <div style={{
+                          display: 'grid',
+                          gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+                          gap: '1rem',
+                          marginBottom: '1rem',
+                          padding: '1rem',
+                          background: '#f9fafb',
+                          borderRadius: '10px',
+                        }}>
+                          <div>
+                            <p style={{ fontSize: '0.75rem', color: '#999', margin: '0 0 0.25rem 0' }}>Titulaire</p>
+                            <p style={{ fontWeight: 'bold', margin: 0 }}>{card.holderName}</p>
+                          </div>
+                          <div>
+                            <p style={{ fontSize: '0.75rem', color: '#999', margin: '0 0 0.25rem 0' }}>4 derniers chiffres</p>
+                            <p style={{ fontWeight: 'bold', margin: 0 }}>•••• {card.last4}</p>
+                          </div>
+                          <div>
+                            <p style={{ fontSize: '0.75rem', color: '#999', margin: '0 0 0.25rem 0' }}>Frais payés</p>
+                            <p style={{ fontWeight: 'bold', margin: 0 }}>
+                              {(card.creationFee + card.monthlyFee).toFixed(2)} €
+                            </p>
+                          </div>
+                          <div>
+                            <p style={{ fontSize: '0.75rem', color: '#999', margin: '0 0 0.25rem 0' }}>Solde compte</p>
+                            <p style={{ fontWeight: 'bold', margin: 0 }}>
+                              {card.accountBalance.toFixed(2)} €
+                            </p>
+                          </div>
+                        </div>
+
+                        <div style={{
+                          padding: '1rem',
+                          background: '#eff6ff',
+                          borderRadius: '10px',
+                          marginBottom: '1rem',
+                        }}>
+                          <p style={{ fontSize: '0.75rem', color: '#1e40af', fontWeight: 'bold', margin: '0 0 0.25rem 0' }}>
+                            💰 Détail des frais
+                          </p>
+                          <p style={{ color: '#1e40af', margin: 0, fontSize: '0.875rem' }}>
+                            Création : {card.creationFee.toFixed(2)} € + Entretien mensuel : {card.monthlyFee.toFixed(2)} €
+                          </p>
+                        </div>
+
+                        <div style={{
+                          fontSize: '0.75rem',
+                          color: '#999',
+                          marginBottom: '1rem',
+                        }}>
+                          Demandé le {new Date(card.createdAt).toLocaleDateString('fr-FR', {
+                            day: '2-digit',
+                            month: 'long',
+                            year: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit',
+                          })}
+                        </div>
+
+                        <div style={{ display: 'flex', gap: '1rem' }}>
+                          <button
+                            onClick={() => {
+                              setSelectedCardToValidate(card)
+                              setCardNumberInput('')
+                              setShowValidateCardModal(true)
+                            }}
+                            style={{
+                              flex: 1,
+                              padding: '1rem',
+                              background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                              color: 'white',
+                              border: 'none',
+                              borderRadius: '10px',
+                              fontWeight: '600',
+                              cursor: 'pointer',
+                              fontSize: '1rem',
+                            }}
+                          >
+                            ✅ Valider et Attribuer Numéro
+                          </button>
+                          <button
+                            onClick={() => handleRejectCard(card.id)}
+                            style={{
+                              flex: 1,
+                              padding: '1rem',
+                              background: '#ef4444',
+                              color: 'white',
+                              border: 'none',
+                              borderRadius: '10px',
+                              fontWeight: '600',
+                              cursor: 'pointer',
+                              fontSize: '1rem',
+                            }}
+                          >
+                            ❌ Rejeter
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* Modal Modification RIB (Admin) */}
             {showEditRibModal && (
               <div style={{
@@ -3588,6 +4012,134 @@ if (data.user.role === 'admin' || data.user.role === 'super_admin') {
                       </button>
                     </div>
                   </form>
+                </div>
+              </div>
+            )}
+            {/* Modal Validation Carte */}
+            {showValidateCardModal && selectedCardToValidate && (
+              <div style={{
+                position: 'fixed',
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                background: 'rgba(0,0,0,0.5)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                zIndex: 1000,
+              }}>
+                <div style={{
+                  background: 'white',
+                  borderRadius: '20px',
+                  padding: '2rem',
+                  maxWidth: '600px',
+                  width: '90%',
+                }}>
+                  <h3 style={{ fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '1.5rem' }}>
+                    ✅ Valider la Carte {selectedCardToValidate.cardType.toUpperCase()}
+                  </h3>
+
+                  <div style={{
+                    background: '#f9fafb',
+                    borderRadius: '10px',
+                    padding: '1rem',
+                    marginBottom: '1.5rem',
+                  }}>
+                    <p style={{ margin: '0 0 0.5rem 0' }}>
+                      <strong>Client :</strong> {selectedCardToValidate.userName}
+                    </p>
+                    <p style={{ margin: '0 0 0.5rem 0' }}>
+                      <strong>Email :</strong> {selectedCardToValidate.userEmail}
+                    </p>
+                    <p style={{ margin: '0 0 0.5rem 0' }}>
+                      <strong>Titulaire :</strong> {selectedCardToValidate.holderName}
+                    </p>
+                    <p style={{ margin: 0 }}>
+                      <strong>4 derniers chiffres :</strong> •••• {selectedCardToValidate.last4}
+                    </p>
+                  </div>
+
+                  <div style={{ marginBottom: '1.5rem' }}>
+                    <label style={{ display: 'block', fontWeight: '600', marginBottom: '0.5rem' }}>
+                      Numéro de carte complet (16 chiffres)
+                    </label>
+                    <input
+                      type="text"
+                      value={cardNumberInput}
+                      onChange={(e) => {
+                        // Formater automatiquement avec espaces
+                        const value = e.target.value.replace(/\s/g, '').replace(/\D/g, '')
+                        if (value.length <= 16) {
+                          const formatted = value.match(/.{1,4}/g)?.join(' ') || value
+                          setCardNumberInput(formatted)
+                        }
+                      }}
+                      placeholder="1234 5678 9012 3456"
+                      maxLength="19"
+                      style={{
+                        width: '100%',
+                        padding: '1rem',
+                        border: '2px solid #e5e7eb',
+                        borderRadius: '10px',
+                        fontSize: '1.25rem',
+                        fontFamily: 'monospace',
+                        letterSpacing: '0.1em',
+                      }}
+                    />
+                    <p style={{ fontSize: '0.75rem', color: '#999', marginTop: '0.5rem' }}>
+                      Le numéro doit commencer par les chiffres du réseau de la carte et se terminer par : {selectedCardToValidate.last4}
+                    </p>
+                  </div>
+
+                  <div style={{
+                    background: '#fef3c7',
+                    border: '1px solid #fde68a',
+                    borderRadius: '10px',
+                    padding: '1rem',
+                    marginBottom: '1.5rem',
+                  }}>
+                    <p style={{ color: '#92400e', margin: 0, fontSize: '0.875rem' }}>
+                      ⚠️ <strong>Important :</strong> Une fois validé, le numéro de carte sera visible par le client. Assurez-vous qu'il est correct et unique.
+                    </p>
+                  </div>
+
+                  <div style={{ display: 'flex', gap: '1rem' }}>
+                    <button
+                      onClick={() => {
+                        setShowValidateCardModal(false)
+                        setCardNumberInput('')
+                      }}
+                      style={{
+                        flex: 1,
+                        padding: '1rem',
+                        background: '#e5e7eb',
+                        color: '#333',
+                        border: 'none',
+                        borderRadius: '10px',
+                        fontWeight: '600',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      Annuler
+                    </button>
+                    <button
+                      onClick={() => handleApproveCard(selectedCardToValidate.id)}
+                      style={{
+                        flex: 1,
+                        padding: '1rem',
+                        background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '10px',
+                        fontWeight: '600',
+                        cursor: 'pointer',
+                      }}
+                      disabled={cardNumberInput.replace(/\s/g, '').length !== 16}
+                    >
+                      ✅ Valider et Activer
+                    </button>
+                  </div>
                 </div>
               </div>
             )}
