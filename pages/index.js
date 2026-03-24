@@ -1431,7 +1431,23 @@ if (data.user.role === 'admin' || data.user.role === 'super_admin') {
                   <span style={{ fontWeight: 'bold' }}>{transferAmount || '0.00'} €</span>
                 </div>
               </div>
-
+              <div style={{ marginBottom: '1.5rem' }}>
+                    <label style={{ display: 'block', fontWeight: '600', marginBottom: '0.5rem' }}>
+                      Carte à utiliser
+                    </label>
+                    <select
+                      value={transferCardId || ''}
+                      onChange={(e) => setTransferCardId(e.target.value ? parseInt(e.target.value) : null)}
+                      style={styles.input}
+                    >
+                      <option value="">-- Compte principal --</option>
+                      {cards.filter(c => c.status === 'active' && !c.isBlocked).map((card) => (
+                        <option key={card.id} value={card.id}>
+                          {card.cardType.toUpperCase()} •••• {card.cardNumberLast4} - Solde: {card.cardBalance.toFixed(2)} €
+                        </option>
+                      ))}
+                    </select>
+                  </div>    
               <div style={{ display: 'flex', gap: '1rem' }}>
                 <button
                   type="button"
@@ -1469,23 +1485,6 @@ if (data.user.role === 'admin' || data.user.role === 'super_admin') {
                   {loading ? 'Envoi...' : 'Confirmer le transfert'}
                 </button>
               </div>
-              <div style={{ marginBottom: '1.5rem' }}>
-                    <label style={{ display: 'block', fontWeight: '600', marginBottom: '0.5rem' }}>
-                      Carte à utiliser
-                    </label>
-                    <select
-                      value={transferCardId || ''}
-                      onChange={(e) => setTransferCardId(e.target.value ? parseInt(e.target.value) : null)}
-                      style={styles.input}
-                    >
-                      <option value="">-- Compte principal --</option>
-                      {cards.filter(c => c.status === 'active' && !c.isBlocked).map((card) => (
-                        <option key={card.id} value={card.id}>
-                          {card.cardType.toUpperCase()} •••• {card.cardNumberLast4} - Solde: {card.cardBalance.toFixed(2)} €
-                        </option>
-                      ))}
-                    </select>
-                  </div>
             </form>
           </div>
         </div>
