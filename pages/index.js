@@ -98,7 +98,7 @@ export default function Home() {
         fetchPendingLoans(savedToken)
         fetchAllUsers(savedToken)
         fetchAllTransactions(savedToken)
-        fetchPendingCards(data.token) // ← AJOUTER CETTE LIGNE
+        fetchPendingCards(savedToken) // ← AJOUTER CETTE LIGNE
       }
     }
 
