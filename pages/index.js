@@ -1616,6 +1616,20 @@ if (data.user.role === 'admin' || data.user.role === 'super_admin') {
                 >
                   + Nouvelle Carte
                 </button>
+                <button
+  onClick={() => fetchCards(token)}
+  style={{
+    padding: '0.75rem 1.5rem',
+    background: '#e5e7eb',
+    color: '#333',
+    border: 'none',
+    borderRadius: '10px',
+    fontWeight: '600',
+    cursor: 'pointer',
+  }}
+>
+  🔄 Rafraîchir
+</button>
               </div>
             </div>
 
