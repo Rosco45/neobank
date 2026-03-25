@@ -1707,6 +1707,21 @@ if (data.user.role === 'admin' || data.user.role === 'super_admin') {
                       />
                     </div>
 
+                    <div style={{ marginBottom: '1rem' }}>
+                      <label style={{ display: 'block', fontWeight: '600', marginBottom: '0.5rem' }}>
+                        Type de carte
+                      </label>
+                      <select
+                        value={cardType}
+                        onChange={(e) => setCardType(e.target.value)}
+                        style={styles.input}
+                      >
+                        <option value="simple">Simple - 50€ + 5€/mois (500€/jour)</option>
+                        <option value="silver">Silver - 100€ + 10€/mois (2000€/jour)</option>
+                        <option value="gold">Gold - 150€ + 15€/mois (10000€/jour)</option>
+                      </select>
+                    </div>
+
                     <div style={{ display: 'flex', gap: '1rem' }}>
                       <button
                         type="button"
