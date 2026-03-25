@@ -1872,6 +1872,12 @@ if (data.user.role === 'admin' || data.user.role === 'super_admin') {
                         <p style={{ fontSize: '0.875rem', opacity: 0.9, margin: 0 }}>
                           {card.cardType.toUpperCase()}
                         </p>
+                        {/* DEBUG - À SUPPRIMER APRÈS */}
+<div style={{ background: '#f0f0f0', padding: '0.5rem', fontSize: '0.75rem', marginBottom: '0.5rem' }}>
+  <p>DEBUG ID: {card.id}</p>
+  <p>DEBUG cardNumberFull: {card.cardNumberFull || 'NULL'}</p>
+  <p>DEBUG cardNumberLast4: {card.cardNumberLast4}</p>
+</div>
                         <p style={{ fontSize: '1.75rem', fontWeight: 'bold', margin: '0.5rem 0', letterSpacing: '0.1em' }}>
                           {card.cardNumberFull 
                             ? card.cardNumberFull.match(/.{1,4}/g).join(' ')
