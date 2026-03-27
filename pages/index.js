@@ -2091,14 +2091,13 @@ if (data.user.role === 'admin' || data.user.role === 'super_admin') {
                       </div>
 
                       <div style={{ marginBottom: '2rem' }}>
-                        {/* DEBUG - À SUPPRIMER APRÈS */}
-                        <div style={{ background: '#000', color: '#0f0', padding: '0.5rem', fontSize: '0.7rem', marginBottom: '0.5rem' }}>
+                        {/* DEBUG - À SUPPRIMER APRÈS */
+                        /*<div style={{ background: '#000', color: '#0f0', padding: '0.5rem', fontSize: '0.7rem', marginBottom: '0.5rem' }}>
                           <div>ID: {card.id}</div>
                           <div>cardNumberFull: {card.cardNumberFull || 'NULL'}</div>
                           <div>Length: {card.cardNumberFull?.length || 0}</div>
                           <div>Status: {card.status}</div>
-                        </div>
-                        
+                        </div>*/}
                         <p style={{ fontSize: '0.75rem', opacity: 0.8, margin: 0 }}>Numéro de carte</p>
                         <p style={{ fontSize: '1.25rem', fontFamily: 'monospace', letterSpacing: '2px', margin: '0.5rem 0 0 0' }}>
                           {(card.cardNumberFull && card.cardNumberFull.length >= 16)
