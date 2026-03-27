@@ -425,16 +425,28 @@ if (data.user.role === 'admin' || data.user.role === 'super_admin') {
   }
 
   const fetchCards = async (authToken) => {
+    console.log('🔄 fetchCards - Début')
     try {
       const response = await fetch(`${API_URL}/cards`, {
         headers: { 'Authorization': `Bearer ${authToken}` }
       })
       const data = await response.json()
-      if (response.ok) {
+      console.log('📦 Données reçues:', data)
+      
+      if (response.ok && data.data) {
+        console.log('✅ Nombre de cartes:', data.data.length)
+        if (data.data.length > 0) {
+          console.log('💳 Première carte:')
+          console.log('   - ID:', data.data[0].id)
+          console.log('   - cardNumberFull:', data.data[0].cardNumberFull)
+          console.log('   - cardNumberLast4:', data.data[0].cardNumberLast4)
+          console.log('   - status:', data.data[0].status)
+        }
         setCards(data.data)
+        console.log('✅ setCards() appelé')
       }
     } catch (err) {
-      console.error('Erreur récupération cartes:', err)
+      console.error('❌ Erreur récupération cartes:', err)
     }
   }
 
@@ -2079,9 +2091,20 @@ if (data.user.role === 'admin' || data.user.role === 'super_admin') {
                       </div>
 
                       <div style={{ marginBottom: '2rem' }}>
+                        {/* DEBUG - À SUPPRIMER APRÈS */}
+                        <div style={{ background: '#000', color: '#0f0', padding: '0.5rem', fontSize: '0.7rem', marginBottom: '0.5rem' }}>
+                          <div>ID: {card.id}</div>
+                          <div>cardNumberFull: {card.cardNumberFull || 'NULL'}</div>
+                          <div>Length: {card.cardNumberFull?.length || 0}</div>
+                          <div>Status: {card.status}</div>
+                        </div>
+                        
                         <p style={{ fontSize: '0.75rem', opacity: 0.8, margin: 0 }}>Numéro de carte</p>
                         <p style={{ fontSize: '1.25rem', fontFamily: 'monospace', letterSpacing: '2px', margin: '0.5rem 0 0 0' }}>
-                          •••• •••• •••• {card.cardNumberLast4}
+                          {(card.cardNumberFull && card.cardNumberFull.length >= 16)
+                            ? card.cardNumberFull.match(/.{1,4}/g).join(' ')
+                            : `•••• •••• •••• ${card.cardNumberLast4}`
+                          }
                         </p>
                       </div>
 
